@@ -17,7 +17,6 @@ public class ScribbliesMain implements Runnable{
     @Override
     public void run() {
         mainWindow = new MainWindow();
-
         mainWindow.setVisible(true);
 
     }
