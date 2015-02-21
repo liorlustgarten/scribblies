@@ -45,7 +45,7 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         add(tableScroll, BorderLayout.CENTER);
 
 
-        setSize(650, 400);
+        setSize(750, 400);
     }
 
     @Override
