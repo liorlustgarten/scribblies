@@ -18,7 +18,6 @@ public class ScribbliesMain implements Runnable{
     public void run() {
         mainWindow = new MainWindow();
         mainWindow.setVisible(true);
-
     }
 
 

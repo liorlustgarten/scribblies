@@ -12,21 +12,14 @@ import java.util.ListIterator;
  */
 
 public class CurveMaker {
-    private Simplify<Point> simplify;
-
-
-    public CurveMaker (){
-        //an empty "sample array" is passed to the Simplify constructor for type consistency
-        simplify = new Simplify<Point>(new Point[0]);
-    }
-
     /**
      * Simplifies a path using the Douglas Peucker algorithm
      * @param inputPath original path in the form of an array of Points
      * @param tolerance tolerance with which the algorithm runs (bigger number means more simplified path)
      * @return simplified list of points. Will return the input list by default if two or less points are provided
      */
-    public Point[] simplifyPath (Point[]inputPath,double tolerance){
+    public static Point[] simplifyPath (Point[]inputPath,double tolerance){
+        Simplify<Point> simplify = new Simplify<Point>(new Point[0]); //an empty "sample array" is passed to the Simplify constructor for type consistency
         if (inputPath.length<3)
             return inputPath;
         return simplify.simplify(inputPath,tolerance,true);
@@ -45,7 +38,12 @@ public class CurveMaker {
         return new CubicBezierCurve(controlPoints[0],controlPoints[1],controlPoints[2],controlPoints[3]);
     }
 
-
+    /**
+     * Finds the corners in a given path and returns the indexes of any points that are considered a corner
+     * @param points
+     * @param maxCornerAngle
+     * @return
+     */
     public static ArrayList<Integer> findCorners (Point[] points, double maxCornerAngle){
         double angleA,angleB,interiorAngle;
 
@@ -75,14 +73,18 @@ public class CurveMaker {
         return cornerIndecies;
     }
 
-
+    /**
+     * Creates a Bezier Curve from a list of points. The smoothness is 'broken' at corners
+     * @param inputPoints
+     * @param cornerTolerance
+     * @return
+     */
     public static CubicBezierCurve makeBezierCurve (Point[]inputPoints,double cornerTolerance){
         //if there are no points or one point passed in, return empty curve
         if (inputPoints.length<2)
               return new CubicBezierCurve();
 
-        //TODO: possible enhancement, break smooth curve at sharp points (have a min curve tolerance) could be done externally (with a different class that uses the bezier curve perhaps)
-        double [] inputCoordinatesX = bPointArrayToCoordinateArrayX(inputPoints);
+          double [] inputCoordinatesX = bPointArrayToCoordinateArrayX(inputPoints);
         double [] inputCoordinatesY = bPointArrayToCoordinateArrayY(inputPoints);
 
         double [] firstControlPointsX = new double [inputPoints.length-1];

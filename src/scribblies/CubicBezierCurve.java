@@ -2,6 +2,7 @@ package scribblies;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.awt.geom.Path2D;
 
 
 /**
@@ -15,7 +16,6 @@ public class CubicBezierCurve {
 
     public CubicBezierCurve() {
     }
-
 
 
     public CubicBezierCurve(Point[] coord, Point[] firstCPs, Point[] secondCPs) {
@@ -69,6 +69,18 @@ public class CubicBezierCurve {
         }
 
         ret = ret + "\" style=\"stroke: "+color+"; fill: none;\"/>";
+        return ret;
+    }
+
+    public Path2D getPath2D (){
+        Path2D ret = new Path2D.Double();
+        if (coordinates!=null && coordinates.length != 0)
+            ret.moveTo(coordinates[0].getX(),coordinates[0].getY());
+
+        for (int i = 0; i<numPoints-1;i++){
+            ret.curveTo(firstControlPoints[i].getX(),firstControlPoints[i].getY(),secondControlPoints[i].getX(),secondControlPoints[i].getY(),coordinates[i+1].getX(),coordinates[i+1].getY());
+        }
+
         return ret;
     }
 }

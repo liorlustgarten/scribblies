@@ -7,6 +7,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Point2D;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 
 /**
@@ -15,15 +18,24 @@ import java.util.ArrayList;
 public class MainWindow extends JFrame implements MouseListener, MouseMotionListener {
 
     DrawingPanel canvas;
+    PromptPanel promptBar;
     JTable sampleTable;
 
-    ArrayList<Point2D> traceCache;
-    PathModel pathModel;
+    JMenuBar menuBar;
+    JMenu fileMenu;
+    JMenu settings;
+    JMenuItem fileMenuSetSaveLocation;
+    JMenuItem fileMenuOpenPrompt;
+
+    //the file chooser dialogue for picking where save and open files
+    final JFileChooser fc = new JFileChooser();
 
     public MainWindow(){
 
         // set window options
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+
+        initializeMenuBar();
 
         // make the drawing panel
         canvas = new DrawingPanel();
@@ -33,6 +45,10 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         canvas.addMouseMotionListener(this);
         canvas.setBorder(new LineBorder(Color.RED, 3));
         add(canvas, BorderLayout.WEST);
+
+        //initialize the prompt bar
+        promptBar = new PromptPanel();
+
 
         // make table
         String [] columns = {"X", "Y"};
@@ -48,6 +64,28 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         setSize(750, 400);
     }
 
+    public void initializeMenuBar(){
+        //make the menubar
+        menuBar = new JMenuBar();
+
+        //make the File Menu
+        fileMenu = new JMenu("File");
+        menuBar.add(fileMenu);
+
+        fileMenuOpenPrompt = new JMenuItem("Open Prompt File");
+        fileMenu.add(fileMenuOpenPrompt);
+
+        fileMenuSetSaveLocation = new JMenuItem("Set Vector File Save Location");
+        fileMenu.add(fileMenuSetSaveLocation);
+
+        //make the settings menu
+        settings = new JMenu("Settings");
+        menuBar.add(settings);
+
+        setJMenuBar(menuBar);
+
+    }
+
     @Override
     public void mouseClicked(MouseEvent mouseEvent) {
     }
@@ -55,17 +93,19 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     @Override
     public void mousePressed(MouseEvent mouseEvent) {
         // create the cache
-        traceCache = new ArrayList<Point2D>();
+        canvas.traceCache = new ArrayList<Point2D>();
 
     }
 
     @Override
     public void mouseReleased(MouseEvent mouseEvent) {
-
-        sampleTable.setModel(new PathModel(traceCache));
-
-        canvas.setLineTrace(traceCache);
+        canvas.addPath(canvas.traceCache);
         canvas.repaint();
+
+        ArrayList<Prompt> p = new ArrayList<Prompt>();
+        p.add(new Prompt("TEST ONE","theFirstTest.SVG"));
+        promptBar.setPrompts(p);
+        promptBar.saveToSVG(canvas.curves);
     }
 
     @Override
@@ -81,7 +121,6 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     @Override
     public void mouseDragged(MouseEvent mouseEvent) {
         Point2D newPoint = new Point2D.Double(mouseEvent.getX(), mouseEvent.getY());
-        traceCache.add(newPoint);
         canvas.addCachePoint(newPoint);
         canvas.repaint();
     }
@@ -89,5 +128,23 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     @Override
     public void mouseMoved(MouseEvent mouseEvent) {
 
+    }
+
+    //opens and reads in a file
+    private void openFile() {
+        int returnVal = fc.showOpenDialog(this);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            BufferedReader in;
+            try {
+                in = new BufferedReader (new FileReader(file));
+                String line = in.readLine();
+                while (line!=null && line.trim()!=""){
+
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
