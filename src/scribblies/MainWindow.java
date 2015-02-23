@@ -1,11 +1,14 @@
 package scribblies;
 
+import javafx.stage.FileChooser;
+
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.table.*;
+import java.awt.event.*;
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,11 +18,17 @@ import java.util.ArrayList;
 /**
  * Created by dgli on 16/02/15.
  */
-public class MainWindow extends JFrame implements MouseListener, MouseMotionListener {
+public class MainWindow extends JFrame implements MouseListener, MouseMotionListener ,ActionListener {
 
+    public static final String OPEN_FILE_ACTION_COMMAND = "open";
+    public static final String SAVE_LOCATION_ACTION_COMMAND = "save";
+    public static final String RAW_RADIO_BUTTON_ACTION_COMMAND = "raw";
+    public static final String BEZIER_RADIO_BUTTON_ACTION_COMMAND = "bezier";
+    PromptTableModel promptModel;
     DrawingPanel canvas;
     PromptPanel promptBar;
-    JTable sampleTable;
+    JTable promptTable;
+    ListSelectionModel promptListSelectionModel;
 
     JMenuBar menuBar;
     JMenu fileMenu;
@@ -27,10 +36,17 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     JMenuItem fileMenuSetSaveLocation;
     JMenuItem fileMenuOpenPrompt;
 
+    //radio buttons for selecting line type in settings
+    static ButtonGroup lineDrawTypeGroup;
+    JRadioButtonMenuItem rawInputRadioButton;
+    JRadioButtonMenuItem simplePathRadioButton;
+    JRadioButtonMenuItem bezierCurveRadioButton;
+
     //the file chooser dialogue for picking where save and open files
     final JFileChooser fc = new JFileChooser();
 
     public MainWindow(){
+        setTitle("Handwriting Vectorization");
 
         // set window options
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -48,14 +64,35 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
 
         //initialize the prompt bar
         promptBar = new PromptPanel();
+        promptBar.init(this);
+        add(promptBar, BorderLayout.SOUTH);
 
 
-        // make table
-        String [] columns = {"X", "Y"};
+        // make prompt table
+        String [] columns = {"Prompts"};
         Object [][] sampleData = {};
-        sampleTable = new JTable(sampleData, columns);
+        promptTable = new JTable(sampleData, columns){
+            @Override
+            public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
+                Component comp = super.prepareRenderer(renderer, row, col);
+                Object value = getModel().getValueAt(row, col);
+                if (promptBar.getCurrentPromptIndex() == row) {
+                    comp.setBackground(Color.green);
+                } else if(promptBar.getPrompts().get(row).hasCurves()){
+                    comp.setBackground(Color.white);
+                } else {
+                    comp.setBackground(Color.lightGray);
+                }
+                return comp;
+            }
+        };
 
-        JScrollPane tableScroll = new JScrollPane(sampleTable);
+        promptListSelectionModel = promptTable.getSelectionModel();
+        promptListSelectionModel.addListSelectionListener(new SharedListSelectionHandler());
+        promptTable.setSelectionModel(promptListSelectionModel);
+
+
+        JScrollPane tableScroll = new JScrollPane(promptTable);
         tableScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         tableScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         add(tableScroll, BorderLayout.CENTER);
@@ -73,21 +110,38 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         menuBar.add(fileMenu);
 
         fileMenuOpenPrompt = new JMenuItem("Open Prompt File");
+        fileMenuOpenPrompt.setActionCommand(OPEN_FILE_ACTION_COMMAND);
+        fileMenuOpenPrompt.addActionListener(this);
         fileMenu.add(fileMenuOpenPrompt);
 
         fileMenuSetSaveLocation = new JMenuItem("Set Vector File Save Location");
+        fileMenuSetSaveLocation.setActionCommand(SAVE_LOCATION_ACTION_COMMAND);
+        fileMenuSetSaveLocation.addActionListener(this);
         fileMenu.add(fileMenuSetSaveLocation);
 
         //make the settings menu
         settings = new JMenu("Settings");
         menuBar.add(settings);
 
-        setJMenuBar(menuBar);
+        lineDrawTypeGroup = new ButtonGroup();
+        rawInputRadioButton = new JRadioButtonMenuItem("Show raw input");
+        rawInputRadioButton.setActionCommand(RAW_RADIO_BUTTON_ACTION_COMMAND);
+        rawInputRadioButton.addActionListener(this);
+        settings.add(rawInputRadioButton);
+        lineDrawTypeGroup.add(rawInputRadioButton);
 
+        bezierCurveRadioButton = new JRadioButtonMenuItem("Show bezier curve",true);
+        bezierCurveRadioButton.setActionCommand(BEZIER_RADIO_BUTTON_ACTION_COMMAND);
+        bezierCurveRadioButton.addActionListener(this);
+        settings.add(bezierCurveRadioButton);
+        lineDrawTypeGroup.add(bezierCurveRadioButton);
+
+        setJMenuBar(menuBar);
     }
 
     @Override
     public void mouseClicked(MouseEvent mouseEvent) {
+
     }
 
     @Override
@@ -101,11 +155,6 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     public void mouseReleased(MouseEvent mouseEvent) {
         canvas.addPath(canvas.traceCache);
         canvas.repaint();
-
-        ArrayList<Prompt> p = new ArrayList<Prompt>();
-        p.add(new Prompt("TEST ONE","theFirstTest.SVG"));
-        promptBar.setPrompts(p);
-        promptBar.saveToSVG(canvas.curves);
     }
 
     @Override
@@ -138,12 +187,91 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
             BufferedReader in;
             try {
                 in = new BufferedReader (new FileReader(file));
+                ArrayList<Prompt> inputPrompts = new ArrayList<Prompt>();
                 String line = in.readLine();
                 while (line!=null && line.trim()!=""){
-
+                    String [] splitLine = line.split(" ");
+                    if (splitLine.length>1)
+                    inputPrompts.add(new Prompt(splitLine[0],splitLine[1]));
+                    line = in.readLine();
                 }
+                promptBar.setPrompts(inputPrompts);
+                promptTable.setModel(new PromptTableModel(promptBar.getPrompts()));
+                promptTable.setCellSelectionEnabled(true);
+                promptTable.setColumnSelectionInterval(0,0);
+                promptTable.setRowSelectionInterval(0,0);
+                promptBar.setMessage("Opened: "+file);
+                canvas.clear();
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+   public String selectDirectory() {
+       JFileChooser f = new JFileChooser();
+       f.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int returnVal = f.showOpenDialog(this);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            return f.getSelectedFile().getAbsolutePath();
+        }
+       return "";
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String ac = e.getActionCommand();
+        if (ac.equalsIgnoreCase(PromptPanel.NEXT_BUTTON_ACTION_COMMAND) && promptBar.getPrompt()!=null){
+            promptBar.getPrompt().setCurves(canvas.curves);
+            promptBar.getPrompt().setRawInput(canvas.rawInput);
+            promptBar.saveToSVG(canvas.curves);
+            if(promptBar.getCurrentPromptIndex()<promptBar.getPrompts().size()-1){
+                canvas.clear();
+                canvas.curves = promptBar.goToPrompt(promptBar.getCurrentPromptIndex() + 1);
+                canvas.rawInput = promptBar.getPrompt().getRawInput();
+                promptTable.setColumnSelectionInterval(0,0);
+                promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
+            }else{
+                promptBar.finished();
+            }
+        } else if (ac.equalsIgnoreCase(PromptPanel.CLEAR_BUTTON_ACTION_COMMAND)){
+            canvas.clear();
+        } else if (ac.equalsIgnoreCase(PromptPanel.UNDO_BUTTON_ACTION_COMMAND)){
+            canvas.undo();
+        } else if (ac.equalsIgnoreCase(OPEN_FILE_ACTION_COMMAND)){
+            openFile();
+        } else if (ac.equalsIgnoreCase(SAVE_LOCATION_ACTION_COMMAND)){
+            promptBar.setSaveDirectory(selectDirectory());
+        }
+        canvas.repaint();
+    }
+
+    class SharedListSelectionHandler implements ListSelectionListener {
+        public void valueChanged(ListSelectionEvent e) {
+            ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+
+            int firstIndex = e.getFirstIndex();
+            int lastIndex = e.getLastIndex();
+            boolean isAdjusting = e.getValueIsAdjusting();
+
+            if (lsm.isSelectionEmpty()) {
+                promptTable.setColumnSelectionInterval(0,0);
+                promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
+            } else {
+                int minIndex = lsm.getMinSelectionIndex();
+                int maxIndex = lsm.getMaxSelectionIndex();
+                if (maxIndex!=minIndex)
+                {
+                    promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
+                }else{
+                    if (minIndex!=promptBar.getCurrentPromptIndex()){
+                        promptBar.getPrompt().setCurves(canvas.curves);
+                        promptBar.saveToSVG(canvas.curves);
+                        canvas.clear();
+                        canvas.curves=promptBar.goToPrompt(minIndex);
+                        canvas.rawInput = promptBar.getPrompt().getRawInput();
+                    }
+                }
             }
         }
     }

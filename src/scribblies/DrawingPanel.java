@@ -28,6 +28,7 @@ public class DrawingPanel extends JPanel {
         rawInput = new ArrayList<ArrayList<Point2D>>();
         curves = new ArrayList<CubicBezierCurve>();
         traceCache = new ArrayList<Point2D>();
+        repaint();
     }
 
     public void addPath(ArrayList<Point2D> trace){
@@ -41,24 +42,37 @@ public class DrawingPanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D)g;
 
-        for (ArrayList<Point2D> points:rawInput) {
-            drawPath(points, Color.blue, new BasicStroke(1), g2);
+        String lineType = MainWindow.lineDrawTypeGroup.getSelection().getActionCommand();
+
+        if (lineType.equalsIgnoreCase(MainWindow.RAW_RADIO_BUTTON_ACTION_COMMAND)) {
+            //draw the trace cache
+            drawPath(traceCache,Color.blue, new BasicStroke(1), g2);
+
+            if (rawInput!=null){
+                for (ArrayList<Point2D> points : rawInput) {
+                    drawPath(points, Color.blue, new BasicStroke(1), g2);
+                }
+            }
         }
 
-        for (CubicBezierCurve curve:curves)
-        {
-            g2.setColor(Color.black);
-            g2.draw(curve.getPath2D());
+        if (lineType.equalsIgnoreCase(MainWindow.BEZIER_RADIO_BUTTON_ACTION_COMMAND)) {
+            //draw current trace cache as a bezier curve
+            g2.draw(CurveMaker.makeBezierCurve(new CurveMaker().simplifyPath(Point.convertPoint2DArrayList(traceCache).toArray(new Point[traceCache.size()]),simplifyTolerance),cornerTolerance).getPath2D());
+
+            //draw the previously draw curves
+            for (CubicBezierCurve curve:curves)
+            {
+                g2.setColor(Color.black);
+                g2.draw(curve.getPath2D());
+            }
         }
 
-        Path2D crazyTime = new Path2D.Double();
-        crazyTime = CurveMaker.makeBezierCurve(new CurveMaker().simplifyPath(Point.convertPoint2DArrayList(traceCache).toArray(new Point[traceCache.size()]),2),135).getPath2D();
-        g2.setColor(Color.blue);
-        g2.setStroke(new BasicStroke(1));
-        g2.draw(crazyTime);
+
     }
 
     public void drawPath (ArrayList<Point2D> path,Color col,Stroke stroke, Graphics2D g2){
+        if (path==null)
+            return;
         Path2D toDraw = new Path2D.Double();
         boolean isFirst =true;
         for (Point2D p : path) {
@@ -74,4 +88,11 @@ public class DrawingPanel extends JPanel {
         g2.draw(toDraw);
     }
 
+    public void undo() {
+        if (rawInput!=null&&rawInput.size()>0)
+            rawInput.remove(rawInput.size()-1);
+        if (curves!=null&&curves.size()>0)
+            curves.remove(curves.size()-1);
+        traceCache = new ArrayList<Point2D>();
+    }
 }

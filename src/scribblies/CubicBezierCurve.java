@@ -54,7 +54,7 @@ public class CubicBezierCurve {
 
     public String toSvgString(String color){
         if (isEmpty())
-            return "<empty curve>";
+            return "";
 
         String ret ="<path d=\"M";
         ret = ret + coordinates[0].getX() + " " + coordinates[0].getY();
