@@ -93,9 +93,8 @@ public class PromptPanel extends JPanel {
             out.write(SVG_HEADER_TEXT);
             out.write("<svg width=\""+SVG_WIDTH+"\" height=\""+SVG_HEIGHT+"\">");
             out.newLine();
-            ListIterator<CubicBezierCurve> i = curves.listIterator();
-            while (i.hasNext()){
-                out.write(i.next().toSvgString(CURVE_COLOR));
+            for(CubicBezierCurve c:curves){
+                out.write(c.toSvgString(CURVE_COLOR));
                 out.newLine();
             }
             out.newLine();
@@ -109,7 +108,6 @@ public class PromptPanel extends JPanel {
     @Override
     public void paintComponent( Graphics g ) {
         super.paintComponent(g);
-        Graphics2D g2 = (Graphics2D)g;
     }
 
     public ArrayList<Prompt> getPrompts() {
@@ -123,12 +121,11 @@ public class PromptPanel extends JPanel {
     /**
      * gets save location based on the currently selected prompt.
      * will returned the path shortened to a maximum number of characters
-     * maxStringLength == -1 is a flag for do not shortem
-     * @param maxStringLength
-     * @return
+     * @param maxStringLength longest the string is allowed to be (-1 for no limit)
+     * @return the absolute path of the save location
      */
     public String getSaveLocation(int maxStringLength) {
-        if (saveDirectory!=null && saveDirectory!=""){
+        if (saveDirectory!=null && !saveDirectory.isEmpty()){
             String fileName="\\"+prompts.get(currentPromptIndex).getSaveFileName();
             if (maxStringLength == -1 || (saveDirectory+fileName).length()<=maxStringLength)
                 return saveDirectory+fileName;
@@ -163,8 +160,7 @@ public class PromptPanel extends JPanel {
     }
 
     public void setPromptMessage(){
-        String prompt = prompts.get(currentPromptIndex).getPromptMessage();
-        setMessage("Saving to: "+ getSaveLocation(52));
+        setMessage("Saving to: "+ getSaveLocation(65));
     }
 
     public Prompt getPrompt(){

@@ -75,11 +75,11 @@ public class CurveMaker {
 
     /**
      * Creates a Bezier Curve from a list of points. The smoothness is 'broken' at corners
-     * @param inputPoints
+     * @param inputPoints list of x y coordinates which define the series of points which the curve will pass through
      * @param cornerTolerance
      * @return
      */
-    public static CubicBezierCurve makeBezierCurve (Point[]inputPoints,double cornerTolerance){
+    public static CubicBezierCurve makeBezierSplineCurve(Point[] inputPoints, double cornerTolerance){
         //if there are no points or one point passed in, return empty curve
         if (inputPoints.length<2)
               return new CubicBezierCurve();
@@ -148,3 +148,4 @@ public class CurveMaker {
       return ret;
     }
 }
+

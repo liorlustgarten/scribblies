@@ -1,7 +1,5 @@
 package scribblies;
 
-import javafx.stage.FileChooser;
-
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
@@ -24,7 +22,7 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     public static final String SAVE_LOCATION_ACTION_COMMAND = "save";
     public static final String RAW_RADIO_BUTTON_ACTION_COMMAND = "raw";
     public static final String BEZIER_RADIO_BUTTON_ACTION_COMMAND = "bezier";
-    PromptTableModel promptModel;
+
     DrawingPanel canvas;
     PromptPanel promptBar;
     JTable promptTable;
@@ -39,7 +37,6 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
     //radio buttons for selecting line type in settings
     static ButtonGroup lineDrawTypeGroup;
     JRadioButtonMenuItem rawInputRadioButton;
-    JRadioButtonMenuItem simplePathRadioButton;
     JRadioButtonMenuItem bezierCurveRadioButton;
 
     //the file chooser dialogue for picking where save and open files
@@ -49,7 +46,7 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         setTitle("Handwriting Vectorization");
 
         // set window options
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         initializeMenuBar();
 
@@ -75,7 +72,6 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
             @Override
             public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
                 Component comp = super.prepareRenderer(renderer, row, col);
-                Object value = getModel().getValueAt(row, col);
                 if (promptBar.getCurrentPromptIndex() == row) {
                     comp.setBackground(Color.green);
                 } else if(promptBar.getPrompts().get(row).hasCurves()){
@@ -189,7 +185,7 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
                 in = new BufferedReader (new FileReader(file));
                 ArrayList<Prompt> inputPrompts = new ArrayList<Prompt>();
                 String line = in.readLine();
-                while (line!=null && line.trim()!=""){
+                while (line!=null && !line.trim().equalsIgnoreCase("")){
                     String [] splitLine = line.split(" ");
                     if (splitLine.length>1)
                     inputPrompts.add(new Prompt(splitLine[0],splitLine[1]));
@@ -198,8 +194,10 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
                 promptBar.setPrompts(inputPrompts);
                 promptTable.setModel(new PromptTableModel(promptBar.getPrompts()));
                 promptTable.setCellSelectionEnabled(true);
-                promptTable.setColumnSelectionInterval(0,0);
-                promptTable.setRowSelectionInterval(0,0);
+                if(promptTable.getRowCount()>=1){
+                    promptTable.setColumnSelectionInterval(0,0);
+                    promptTable.setRowSelectionInterval(0,0);
+                }
                 promptBar.setMessage("Opened: "+file);
                 canvas.clear();
             } catch (Exception e) {
@@ -208,32 +206,21 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         }
     }
 
-   public String selectDirectory() {
-       JFileChooser f = new JFileChooser();
-       f.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        int returnVal = f.showOpenDialog(this);
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            return f.getSelectedFile().getAbsolutePath();
-        }
-       return "";
+    public String selectDirectory() {
+        JFileChooser f = new JFileChooser();
+        f.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+         int returnVal = f.showOpenDialog(this);
+         if (returnVal == JFileChooser.APPROVE_OPTION) {
+             return f.getSelectedFile().getAbsolutePath();
+         }
+        return "";
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         String ac = e.getActionCommand();
         if (ac.equalsIgnoreCase(PromptPanel.NEXT_BUTTON_ACTION_COMMAND) && promptBar.getPrompt()!=null){
-            promptBar.getPrompt().setCurves(canvas.curves);
-            promptBar.getPrompt().setRawInput(canvas.rawInput);
-            promptBar.saveToSVG(canvas.curves);
-            if(promptBar.getCurrentPromptIndex()<promptBar.getPrompts().size()-1){
-                canvas.clear();
-                canvas.curves = promptBar.goToPrompt(promptBar.getCurrentPromptIndex() + 1);
-                canvas.rawInput = promptBar.getPrompt().getRawInput();
-                promptTable.setColumnSelectionInterval(0,0);
-                promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
-            }else{
-                promptBar.finished();
-            }
+            switchPrompt(promptBar.getCurrentPromptIndex() + 1);
         } else if (ac.equalsIgnoreCase(PromptPanel.CLEAR_BUTTON_ACTION_COMMAND)){
             canvas.clear();
         } else if (ac.equalsIgnoreCase(PromptPanel.UNDO_BUTTON_ACTION_COMMAND)){
@@ -250,10 +237,6 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
         public void valueChanged(ListSelectionEvent e) {
             ListSelectionModel lsm = (ListSelectionModel)e.getSource();
 
-            int firstIndex = e.getFirstIndex();
-            int lastIndex = e.getLastIndex();
-            boolean isAdjusting = e.getValueIsAdjusting();
-
             if (lsm.isSelectionEmpty()) {
                 promptTable.setColumnSelectionInterval(0,0);
                 promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
@@ -265,14 +248,25 @@ public class MainWindow extends JFrame implements MouseListener, MouseMotionList
                     promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
                 }else{
                     if (minIndex!=promptBar.getCurrentPromptIndex()){
-                        promptBar.getPrompt().setCurves(canvas.curves);
-                        promptBar.saveToSVG(canvas.curves);
-                        canvas.clear();
-                        canvas.curves=promptBar.goToPrompt(minIndex);
-                        canvas.rawInput = promptBar.getPrompt().getRawInput();
+                        switchPrompt(minIndex);
                     }
                 }
             }
+        }
+    }
+
+    public void switchPrompt(int newPrompt){
+        promptBar.getPrompt().setCurves(canvas.curves);
+        promptBar.getPrompt().setRawInput(canvas.rawInput);
+        promptBar.saveToSVG(canvas.curves);
+        if(newPrompt<promptBar.getPrompts().size()){
+            canvas.clear();
+            canvas.curves = promptBar.goToPrompt(newPrompt);
+            canvas.rawInput = promptBar.getPrompt().getRawInput();
+            promptTable.setColumnSelectionInterval(0,0);
+            promptTable.setRowSelectionInterval(promptBar.getCurrentPromptIndex(),promptBar.getCurrentPromptIndex());
+        }else{
+            promptBar.finished();
         }
     }
 }

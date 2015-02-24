@@ -34,7 +34,7 @@ public class DrawingPanel extends JPanel {
     public void addPath(ArrayList<Point2D> trace){
         rawInput.add(trace);
         Point[] simplifiedPath = CurveMaker.simplifyPath(Point.convertPoint2DArrayList(trace).toArray(new Point[trace.size()]),simplifyTolerance);
-        curves.add(CurveMaker.makeBezierCurve(simplifiedPath,cornerTolerance));
+        curves.add(CurveMaker.makeBezierSplineCurve(simplifiedPath, cornerTolerance));
     }
 
     @Override
@@ -57,7 +57,7 @@ public class DrawingPanel extends JPanel {
 
         if (lineType.equalsIgnoreCase(MainWindow.BEZIER_RADIO_BUTTON_ACTION_COMMAND)) {
             //draw current trace cache as a bezier curve
-            g2.draw(CurveMaker.makeBezierCurve(new CurveMaker().simplifyPath(Point.convertPoint2DArrayList(traceCache).toArray(new Point[traceCache.size()]),simplifyTolerance),cornerTolerance).getPath2D());
+            g2.draw(CurveMaker.makeBezierSplineCurve(CurveMaker.simplifyPath(Point.convertPoint2DArrayList(traceCache).toArray(new Point[traceCache.size()]), simplifyTolerance), cornerTolerance).getPath2D());
 
             //draw the previously draw curves
             for (CubicBezierCurve curve:curves)
